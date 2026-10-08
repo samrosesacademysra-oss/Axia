@@ -9,95 +9,162 @@ const STORAGE_KEYS = {
   STOCK_MOVEMENTS: 'axia_stock_movements',
 };
 
-// Seed sample data for Axia Distributions if user chooses to load starter inventory
+// Opening inventory from the grouped stock sheet.
+// selling_price is the price per piece. stock_quantity is total pieces.
+// The sheet did not include cost prices.
 export const SAMPLE_PRODUCTS: Omit<Product, 'id' | 'created_at' | 'updated_at'>[] = [
   {
-    sku: 'AX-PC-001',
-    name: 'Shea Butter Nourishing Body Lotion',
-    category: 'Personal Care',
-    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80',
-    selling_price: 140,
-    cost_price: 85,
-    stock_quantity: 42,
+    sku: 'AX-MP-001',
+    name: 'Prince',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 216,
     low_stock_threshold: 10,
-    description: 'Enriched with raw Ghanaian shea butter and vitamin E for deep hydration.',
+    description: 'Mini perfume. 6 cartons × 36 pieces. Carton price GH₵540.',
   },
   {
-    sku: 'AX-PC-002',
-    name: 'Clarifying Botanical Face Cleanser',
-    category: 'Personal Care',
-    image_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=400&q=80',
-    selling_price: 95,
-    cost_price: 55,
-    stock_quantity: 4, // Low stock on purpose for testing
-    low_stock_threshold: 8,
-    description: 'Gentle foaming cleanser with tea tree and aloe vera.',
-  },
-  {
-    sku: 'AX-FR-001',
-    name: 'Ocean Mist Eau de Parfum',
+    sku: 'AX-MP-002',
+    name: 'Sugar',
     category: 'Fragrances',
-    image_url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80',
-    selling_price: 220,
-    cost_price: 130,
-    stock_quantity: 18,
-    low_stock_threshold: 5,
-    description: 'Crisp aquatic notes blended with bergamot, cedarwood, and amber.',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 288,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 2 cartons × 144 pieces. Carton price GH₵2,160.',
   },
   {
-    sku: 'AX-FR-002',
-    name: 'Velvet Oud Royale Extrait',
+    sku: 'AX-MP-003',
+    name: 'Coffee Blend',
     category: 'Fragrances',
-    image_url: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=400&q=80',
-    selling_price: 350,
-    cost_price: 210,
-    stock_quantity: 3, // Low stock on purpose
-    low_stock_threshold: 6,
-    description: 'Rich oriental blend of Cambodian oud, Damascus rose, and warm vanilla.',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 36,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 1 carton × 36 pieces. Carton price GH₵540.',
+  },
+  {
+    sku: 'AX-MP-004',
+    name: 'Milky Way',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 36,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 1 carton × 36 pieces. Carton price GH₵540.',
+  },
+  {
+    sku: 'AX-MP-005',
+    name: 'Mint Dust',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 36,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 1 carton × 36 pieces. Carton price GH₵540.',
+  },
+  {
+    sku: 'AX-MP-006',
+    name: 'Etern',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 288,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 2 cartons × 144 pieces. Carton price GH₵2,160.',
+  },
+  {
+    sku: 'AX-MP-007',
+    name: 'Blooming Marvellous',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 7,
+    cost_price: 0,
+    stock_quantity: 720,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 5 cartons × 144 pieces. Carton price GH₵1,008.',
+  },
+  {
+    sku: 'AX-MP-008',
+    name: 'Seasons',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 432,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 12 cartons × 36 pieces. Carton price GH₵540.',
+  },
+  {
+    sku: 'AX-MP-009',
+    name: 'Club de Nuit',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 5,
+    cost_price: 0,
+    stock_quantity: 216,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 6 cartons × 36 pieces. Carton price GH₵180.',
+  },
+  {
+    sku: 'AX-MP-010',
+    name: 'Choco Divine',
+    category: 'Fragrances',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 72,
+    low_stock_threshold: 10,
+    description: 'Mini perfume. 2 cartons × 36 pieces. Carton price GH₵540.',
   },
   {
     sku: 'AX-DF-001',
-    name: 'Serene Lavender Reed Diffuser',
+    name: 'Vogue White',
     category: 'Diffusers',
-    image_url: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=400&q=80',
-    selling_price: 165,
-    cost_price: 95,
-    stock_quantity: 25,
-    low_stock_threshold: 5,
-    description: 'Calming French lavender essential oils with natural rattan reeds.',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 960,
+    low_stock_threshold: 10,
+    description: 'Diffuser. 20 cartons × 48 pieces. Carton price GH₵720.',
   },
   {
     sku: 'AX-DF-002',
-    name: 'Amber Sandalwood Ultrasonic Diffuser Oil',
+    name: 'Vogue Black',
     category: 'Diffusers',
-    image_url: 'https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&w=400&q=80',
-    selling_price: 120,
-    cost_price: 70,
-    stock_quantity: 2, // Low stock on purpose
-    low_stock_threshold: 5,
-    description: 'Concentrated diffuser oil with soothing woody base notes.',
+    image_url: null,
+    selling_price: 15,
+    cost_price: 0,
+    stock_quantity: 180,
+    low_stock_threshold: 10,
+    description: 'Diffuser. 5 cartons × 36 pieces. Carton price GH₵540.',
+  },
+  {
+    sku: 'AX-PC-001',
+    name: 'Dove Deodorant 250ml',
+    category: 'Personal Care',
+    image_url: null,
+    selling_price: 7,
+    cost_price: 0,
+    stock_quantity: 5680,
+    low_stock_threshold: 10,
+    description: 'Personal care. 59 cartons × 96 pieces, plus 16 loose pieces. Carton price GH₵672.',
   },
 ];
 
-export const SAMPLE_CUSTOMERS: Omit<Customer, 'id' | 'created_at'>[] = [
-  {
-    name: 'John Mensah',
-    phone: '+233 24 412 8900',
-    email: 'j.mensah@example.com',
-    address: 'East Legon, Accra',
-  },
-  {
-    name: 'Akua Darko',
-    phone: '+233 20 873 4512',
-    email: 'akua.darko@example.com',
-    address: 'Airport Hills, Accra',
-  },
-  {
-    name: 'Kofi Boateng',
-    phone: '+233 55 901 2341',
-    email: 'k.boateng@example.com',
-    address: 'Adum, Kumasi',
-  },
+const LEGACY_DEMO_NAMES = [
+  'Shea Butter Nourishing Body Lotion',
+  'Clarifying Botanical Face Cleanser',
+  'Ocean Mist Eau de Parfum',
+  'Velvet Oud Royale Extrait',
+  'Serene Lavender Reed Diffuser',
+  'Amber Sandalwood Ultrasonic Diffuser Oil',
 ];
 
 class LocalDb {
@@ -223,76 +290,48 @@ class LocalDb {
     this.set(STORAGE_KEYS.STOCK_MOVEMENTS, list);
   }
 
-  // STARTER SEED
-  seedSampleData(): void {
-    const now = new Date();
+  // OPENING INVENTORY
+  loadOpeningInventory(options?: { replace?: boolean }): void {
+    const existing = this.getProducts();
+    const legacyDemo = existing.some((p) => LEGACY_DEMO_NAMES.includes(p.name));
+    if (existing.length > 0 && !legacyDemo && !options?.replace) return;
+
+    const now = new Date().toISOString();
     const products: Product[] = SAMPLE_PRODUCTS.map((p, idx) => ({
       ...p,
-      id: `prod-seed-${idx + 1}`,
-      created_at: new Date(now.getTime() - (idx + 2) * 86400000).toISOString(),
-      updated_at: now.toISOString(),
-    }));
-
-    const customers: Customer[] = SAMPLE_CUSTOMERS.map((c, idx) => ({
-      ...c,
-      id: `cust-seed-${idx + 1}`,
-      created_at: new Date(now.getTime() - (idx + 4) * 86400000).toISOString(),
+      id: `prod-opening-${idx + 1}`,
+      created_at: now,
+      updated_at: now,
     }));
 
     this.set(STORAGE_KEYS.PRODUCTS, products);
-    this.set(STORAGE_KEYS.CUSTOMERS, customers);
 
-    // Initial stock movements for received initial stock
     const movements: StockMovement[] = products.map((p) => ({
-      id: `sm-seed-${p.id}`,
+      id: `sm-opening-${p.id}`,
       product_id: p.id,
       movement_type: 'Received',
       quantity: p.stock_quantity,
       previous_quantity: 0,
       new_quantity: p.stock_quantity,
-      reason: 'Initial warehouse inventory intake',
+      reason: 'Opening inventory from grouped summary',
       recorded_by: 'Admin',
-      created_at: p.created_at,
+      created_at: now,
     }));
     this.set(STORAGE_KEYS.STOCK_MOVEMENTS, movements);
 
-    // Initial sale example
-    const saleId = 'sale-seed-1';
-    const saleDate = new Date(now.getTime() - 2 * 3600000).toISOString();
-    const demoItems: SaleItem[] = [
-      {
-        id: 'si-1',
-        sale_id: saleId,
-        product_id: products[2].id, // Ocean Mist
-        quantity: 2,
-        unit_price: 220,
-        subtotal: 440,
-      },
-    ];
-    const demoSale: Sale = {
-      id: saleId,
-      sale_number: 'AX-00021',
-      customer_id: customers[0].id,
-      total_amount: 440,
-      amount_paid: 440,
-      balance: 0,
-      payment_status: 'Paid',
-      recorded_by: 'Admin',
-      created_at: saleDate,
-    };
-    const demoPayment: Payment = {
-      id: 'pay-seed-1',
-      sale_id: saleId,
-      amount: 440,
-      payment_method: 'Mobile Money',
-      payment_reference: 'MOMO-984210',
-      recorded_by: 'Admin',
-      created_at: saleDate,
-    };
+    if (legacyDemo || options?.replace) {
+      const sales = this.get<Sale>(STORAGE_KEYS.SALES);
+      const demoOnly = sales.every((sale) => sale.id.startsWith('sale-seed'));
+      if (legacyDemo || demoOnly) {
+        this.set(STORAGE_KEYS.SALES, []);
+        this.set(STORAGE_KEYS.SALE_ITEMS, []);
+        this.set(STORAGE_KEYS.PAYMENTS, []);
+      }
+    }
+  }
 
-    this.set(STORAGE_KEYS.SALES, [demoSale]);
-    this.set(STORAGE_KEYS.SALE_ITEMS, demoItems);
-    this.set(STORAGE_KEYS.PAYMENTS, [demoPayment]);
+  seedSampleData(): void {
+    this.loadOpeningInventory({ replace: true });
   }
 
   clearAll(): void {

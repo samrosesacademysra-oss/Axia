@@ -36,7 +36,7 @@ export function SettingsView() {
   const handleLoadStarterData = () => {
     localDb.seedSampleData();
     refreshData();
-    setActionMessage('Axia Distributions starter products and sample sales loaded successfully.');
+    setActionMessage('Opening inventory from the stock sheet has been loaded.');
     setTimeout(() => setActionMessage(null), 3000);
   };
 
@@ -209,7 +209,7 @@ export function SettingsView() {
             className="px-3.5 py-2 text-xs font-semibold text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors flex items-center gap-2"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Load Axia Starter Inventory Catalog
+            Load opening inventory
           </button>
 
           <button

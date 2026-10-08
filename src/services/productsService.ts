@@ -1,6 +1,75 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
 import { Product, ProductCategory, StockMovement } from '../types/database';
-import { localDb } from './dbStorage';
+import { localDb, SAMPLE_PRODUCTS } from './dbStorage';
+
+let openingInventoryTask: Promise<void> | null = null;
+let useSupabaseInventory = false;
+
+/** Load the stock-sheet catalog once, into Supabase when that database is ready, otherwise locally. */
+export function ensureOpeningInventory(): Promise<void> {
+  if (!openingInventoryTask) {
+    openingInventoryTask = applyOpeningInventory();
+  }
+  return openingInventoryTask;
+}
+
+async function applyOpeningInventory(): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: existing, error } = await supabase.from('products').select('sku');
+      if (error) throw error;
+
+      const have = new Set((existing || []).map((row) => row.sku as string));
+      const missing = SAMPLE_PRODUCTS.filter((product) => !have.has(product.sku));
+
+      if (missing.length > 0) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('products')
+          .insert(
+            missing.map((product) => ({
+              sku: product.sku,
+              name: product.name,
+              category: product.category,
+              image_url: product.image_url,
+              selling_price: product.selling_price,
+              cost_price: product.cost_price,
+              stock_quantity: product.stock_quantity,
+              low_stock_threshold: product.low_stock_threshold,
+              description: product.description,
+            }))
+          )
+          .select('id, stock_quantity');
+
+        if (insertError) throw insertError;
+
+        if (inserted && inserted.length > 0) {
+          const { error: movementError } = await supabase.from('stock_movements').insert(
+            inserted.map((row) => ({
+              product_id: row.id,
+              movement_type: 'Received',
+              quantity: row.stock_quantity,
+              previous_quantity: 0,
+              new_quantity: row.stock_quantity,
+              reason: 'Opening inventory from grouped summary',
+              recorded_by: 'Admin',
+            }))
+          );
+          if (movementError) {
+            console.warn('Opening stock movements were not saved:', movementError);
+          }
+        }
+      }
+
+      useSupabaseInventory = true;
+      return;
+    } catch (err) {
+      console.warn('Opening inventory saved locally because Supabase is not ready:', err);
+    }
+  }
+
+  localDb.loadOpeningInventory();
+  useSupabaseInventory = false;
+}
 
 export interface CreateProductInput {
   sku: string;
@@ -28,7 +97,9 @@ export async function getProducts(options?: {
   category?: ProductCategory;
   search?: string;
 }): Promise<Product[]> {
-  if (isSupabaseConfigured && supabase) {
+  await ensureOpeningInventory();
+
+  if (useSupabaseInventory && isSupabaseConfigured && supabase) {
     try {
       let query = supabase.from('products').select('*').order('created_at', { ascending: false });
       if (options?.category) {

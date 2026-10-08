@@ -107,10 +107,10 @@ export function DashboardView({
         <EmptyState
           icon={<Package className="w-8 h-8 text-stone-400" />}
           title="No products yet"
-          description="Your Axia Distributions inventory is currently empty. Add your first product or load the starter catalog to begin tracking stock and sales."
+          description="Your Axia Distributions inventory is currently empty. Add a product or load the opening stock sheet."
           actionLabel="+ Add Product"
           onAction={onOpenAddProduct}
-          secondaryActionLabel="Load Starter Catalog"
+          secondaryActionLabel="Load opening inventory"
           onSecondaryAction={handleSeedDemo}
         />
       ) : (
