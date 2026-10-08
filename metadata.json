@@ -1,0 +1,6 @@
+{
+  "name": "Axia Distributions — Inventory & Sales Management",
+  "description": "Clean, modern inventory and sales management system for Axia Distributions. Track stock across Personal Care, Fragrances, and Diffusers, record sales and payments, and monitor inventory movements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
