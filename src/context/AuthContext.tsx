@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const defaultAdmin: AdminUser = {
             id: 'admin-01',
             email: 'admin@axiadistributions.com',
-            name: 'Kwame Mensah (Admin)',
+            name: 'Samuel Nyamekye (Admin)',
             role: 'Admin',
           };
           localStorage.setItem(LOCAL_ADMIN_KEY, JSON.stringify(defaultAdmin));

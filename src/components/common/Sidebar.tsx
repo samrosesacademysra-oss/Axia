@@ -47,7 +47,7 @@ export function Sidebar({
       {/* Brand Header */}
       <div className="flex items-center justify-between px-6 h-16 border-b border-stone-800">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white text-stone-900 font-bold flex items-center justify-center text-sm tracking-tight shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-white text-stone-950 font-bold flex items-center justify-center text-sm tracking-tight shadow-xs">
             AX
           </div>
           <div>

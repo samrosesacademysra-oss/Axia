@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { createProduct } from '../../services/productsService';
-import { PRODUCT_CATEGORIES, ProductCategory } from '../../types/database';
+import { createProduct, updateProduct } from '../../services/productsService';
+import { readPackDetails, stripPackDetails, writePackDetails } from '../../lib/packDetails';
+import { PRODUCT_CATEGORIES, Product, ProductCategory } from '../../types/database';
 import { Modal } from '../common/Modal';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  product?: Product | null;
 }
 
-export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
+export function AddProductModal({ isOpen, onClose, product }: AddProductModalProps) {
   const { user } = useAuth();
   const { refreshData } = useData();
 
   const [name, setName] = useState('');
-  const [sku, setSku] = useState('');
   const [category, setCategory] = useState<ProductCategory>('Personal Care');
   const [imageUrl, setImageUrl] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -23,9 +24,56 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
   const [initialStock, setInitialStock] = useState('0');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
   const [description, setDescription] = useState('');
+  const [cartonUnit, setCartonUnit] = useState('');
+  const [cartonPrice, setCartonPrice] = useState('');
+  const [cartonCount, setCartonCount] = useState('');
+  const [loosePieces, setLoosePieces] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEditing = Boolean(product);
+  const unitPriceValue = Number(sellingPrice);
+  const totalPiecesValue = Number(initialStock);
+  const totalAmount =
+    sellingPrice !== '' &&
+    initialStock !== '' &&
+    !Number.isNaN(unitPriceValue) &&
+    !Number.isNaN(totalPiecesValue)
+      ? unitPriceValue * totalPiecesValue
+      : null;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    if (product) {
+      setName(product.name);
+      setCategory(product.category);
+      setImageUrl(product.image_url || '');
+      const pack = readPackDetails(product.description);
+      setSellingPrice(String(product.selling_price));
+      setCostPrice(String(product.cost_price));
+      setInitialStock(String(product.stock_quantity));
+      setLowStockThreshold(String(product.low_stock_threshold));
+      setCartonUnit(pack.unitsPerCarton);
+      setCartonPrice(pack.cartonPrice);
+      setCartonCount(pack.cartonCount);
+      setLoosePieces(pack.loosePieces);
+      setDescription(stripPackDetails(product.description || ''));
+      return;
+    }
+    setName('');
+    setCategory('Personal Care');
+    setImageUrl('');
+    setSellingPrice('');
+    setCostPrice('');
+    setInitialStock('0');
+    setLowStockThreshold('5');
+    setDescription('');
+    setCartonUnit('');
+    setCartonPrice('');
+    setCartonCount('');
+    setLoosePieces('');
+  }, [isOpen, product]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,42 +83,54 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
       setError('Product name is required.');
       return;
     }
-    if (!sku.trim()) {
-      setError('SKU is required.');
-      return;
-    }
     const sell = parseFloat(sellingPrice);
     if (isNaN(sell) || sell < 0) {
-      setError('Please provide a valid selling price.');
+      setError('Please provide a valid unit price.');
+      return;
+    }
+    if (isEditing && cartonUnit && (Number.isNaN(Number(cartonUnit)) || Number(cartonUnit) <= 0)) {
+      setError('Carton unit must be greater than zero.');
+      return;
+    }
+    if (isEditing && cartonPrice && (Number.isNaN(Number(cartonPrice)) || Number(cartonPrice) < 0)) {
+      setError('Please provide a valid carton price.');
+      return;
+    }
+    if (isEditing && cartonCount && (Number.isNaN(Number(cartonCount)) || Number(cartonCount) < 0)) {
+      setError('Total cartons cannot be negative.');
       return;
     }
 
     try {
       setSubmitting(true);
-      await createProduct({
+      const savedDescription = isEditing
+        ? writePackDetails(description, { cartonCount, unitsPerCarton: cartonUnit, loosePieces, cartonPrice })
+        : description;
+      const shared = {
         name,
-        sku,
         category,
         image_url: imageUrl.trim() || null,
         selling_price: sell,
-        cost_price: parseFloat(costPrice) || 0,
-        initial_stock: parseInt(initialStock, 10) || 0,
+        cost_price: isEditing && product ? product.cost_price : parseFloat(costPrice) || 0,
         low_stock_threshold: parseInt(lowStockThreshold, 10) || 5,
-        description,
+        description: savedDescription,
         recorded_by: user?.name || 'Admin',
-      });
+      };
+      if (product) {
+        await updateProduct({
+          ...shared,
+          id: product.id,
+          stock_quantity: parseInt(initialStock, 10) || 0,
+        });
+      } else {
+        await createProduct({
+          ...shared,
+          initial_stock: parseInt(initialStock, 10) || 0,
+        });
+      }
 
       refreshData();
       onClose();
-      // Reset form
-      setName('');
-      setSku('');
-      setSellingPrice('');
-      setCostPrice('');
-      setInitialStock('0');
-      setLowStockThreshold('5');
-      setDescription('');
-      setImageUrl('');
     } catch (err: unknown) {
       setError((err as Error).message || 'Failed to create product.');
     } finally {
@@ -82,8 +142,12 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Product"
-      description="Add a new catalog product to Axia Distributions inventory."
+      title={isEditing ? 'Edit Product' : 'Add New Product'}
+      description={
+        isEditing
+          ? 'Update the unit price, total pieces, carton price, and total cartons.'
+          : 'Add a new catalog product to Axia Distributions inventory.'
+      }
       maxWidth="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,21 +173,6 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
             />
           </div>
 
-          {/* SKU */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              SKU (Stock Keeping Unit) *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. AX-FR-004"
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-mono uppercase bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-            />
-          </div>
-
           {/* Category - strictly 3 categories */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">
@@ -145,7 +194,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
           {/* Selling Price */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Selling Price (GHS) *
+              {isEditing ? 'Unit Price (GHS) *' : 'Selling Price (GHS) *'}
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
@@ -164,31 +213,32 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
             </div>
           </div>
 
-          {/* Cost Price */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Cost Price (GHS)
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
-                GHS
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="75.00"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-                className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-              />
+          {!isEditing && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Cost Price (GHS)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
+                  GHS
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="75.00"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Initial Stock */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Initial Stock Units
+              {isEditing ? 'Total Pieces' : 'Initial Stock Units'}
             </label>
             <input
               type="number"
@@ -198,6 +248,55 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
               className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
             />
           </div>
+
+          {isEditing && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Carton price (GHS)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
+                    GHS
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="540.00"
+                    value={cartonPrice}
+                    onChange={(e) => setCartonPrice(e.target.value)}
+                    className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Total carton
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="6"
+                  value={cartonCount}
+                  onChange={(e) => setCartonCount(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
+              <div className="sm:col-span-2 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                <span className="block text-xs font-semibold text-stone-700">Total amount</span>
+                <span className="mt-1 block font-mono text-lg font-bold text-stone-900">
+                  {totalAmount === null ? '—' : `GHS ${totalAmount.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-stone-400">
+                  Unit Price × Total Pieces
+                </span>
+                <span className="mt-2 block text-xs font-semibold text-stone-700">
+                  Total carton: <span className="font-mono">{cartonCount || '—'}</span>
+                </span>
+              </div>
+            </>
+          )}
 
           {/* Low Stock Threshold */}
           <div>
@@ -258,7 +357,7 @@ export function AddProductModal({ isOpen, onClose }: AddProductModalProps) {
             disabled={submitting}
             className="px-4 py-2 text-xs font-medium text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 rounded-lg transition-colors shadow-xs"
           >
-            {submitting ? 'Creating...' : '+ Create Product'}
+            {submitting ? 'Saving...' : isEditing ? 'Save changes' : '+ Create Product'}
           </button>
         </div>
       </form>

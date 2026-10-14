@@ -132,9 +132,6 @@ export function SaleDetailModal({
                     <span className="font-semibold text-stone-900 block leading-tight">
                       {item.product?.name || 'Product'}
                     </span>
-                    <span className="text-[10px] font-mono text-stone-400">
-                      {item.product?.sku}
-                    </span>
                   </div>
                   <div className="col-span-2 text-center font-mono font-medium text-stone-700">
                     {item.quantity}

@@ -5,11 +5,13 @@ import {
   Clock,
   History,
   Package,
+  Pencil,
   Plus,
   Tag,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
+import { readPackDetails } from '../../lib/packDetails';
 import { getStockMovements } from '../../services/stockMovementsService';
 import { Product, StockMovement, StockStatus } from '../../types/database';
 import { CategoryBadge, StockBadge } from '../common/Badge';
@@ -20,6 +22,7 @@ interface ProductDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenReceiveStock: (product: Product) => void;
+  onEditProduct: (product: Product) => void;
 }
 
 export function ProductDetailModal({
@@ -27,6 +30,7 @@ export function ProductDetailModal({
   isOpen,
   onClose,
   onOpenReceiveStock,
+  onEditProduct,
 }: ProductDetailModalProps) {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
@@ -43,6 +47,9 @@ export function ProductDetailModal({
 
   if (!product) return null;
 
+  const pack = readPackDetails(product.description);
+  const cartonPrice = pack.cartonPrice === '' ? null : Number(pack.cartonPrice);
+
   const stockStatus: StockStatus =
     product.stock_quantity === 0
       ? 'Out of Stock'
@@ -55,7 +62,6 @@ export function ProductDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Product Specification & Stock"
-      description={`SKU: ${product.sku}`}
       maxWidth="2xl"
     >
       <div className="space-y-6">
@@ -86,6 +92,15 @@ export function ProductDetailModal({
             </p>
           </div>
 
+          <div className="flex items-center gap-2 sm:self-center">
+          <button
+            type="button"
+            onClick={() => onEditProduct(product)}
+            className="px-3.5 py-2 text-xs font-semibold text-stone-800 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -97,38 +112,43 @@ export function ProductDetailModal({
             <Plus className="w-3.5 h-3.5" />
             Receive Stock
           </button>
+          </div>
         </div>
 
         {/* Metric Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3 bg-white border border-stone-200 rounded-lg">
             <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Current Stock
+              Carton price
+            </span>
+            <span className="text-xl font-bold font-mono text-stone-900">
+              {cartonPrice === null || Number.isNaN(cartonPrice)
+                ? '—'
+                : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </span>
+            <span className="text-[10px] text-stone-500 block">per carton</span>
+          </div>
+
+          <div className="p-3 bg-white border border-stone-200 rounded-lg">
+            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+              Total carton
+            </span>
+            <span className="text-xl font-bold font-mono text-stone-900">
+              {pack.cartonCount || '—'}
+            </span>
+            <span className="text-[10px] text-stone-500 block">cartons on hand</span>
+          </div>
+
+          <div className="p-3 bg-white border border-stone-200 rounded-lg">
+            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+              Total pieces
             </span>
             <span className="text-xl font-bold font-mono text-stone-900">
               {product.stock_quantity}
             </span>
-            <span className="text-[10px] text-stone-500 block">units in storage</span>
-          </div>
-
-          <div className="p-3 bg-white border border-stone-200 rounded-lg">
-            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Selling Price
+            <span className="text-[10px] text-stone-500 block">
+              GHS {product.selling_price.toFixed(2)} per piece
             </span>
-            <span className="text-xl font-bold font-mono text-stone-900">
-              GHS {product.selling_price.toFixed(2)}
-            </span>
-            <span className="text-[10px] text-stone-500 block">per unit</span>
-          </div>
-
-          <div className="p-3 bg-white border border-stone-200 rounded-lg">
-            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Cost Price
-            </span>
-            <span className="text-xl font-bold font-mono text-stone-900">
-              GHS {product.cost_price.toFixed(2)}
-            </span>
-            <span className="text-[10px] text-stone-500 block">unit acquisition</span>
           </div>
 
           <div className="p-3 bg-white border border-stone-200 rounded-lg">

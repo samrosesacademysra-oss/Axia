@@ -38,6 +38,7 @@ function MainApp() {
   const [isReceiveStockOpen, setIsReceiveStockOpen] = useState(false);
   const [receiveStockProduct, setReceiveStockProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Details modals
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -51,7 +52,7 @@ function MainApp() {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <div className="text-center space-y-2">
-          <div className="w-8 h-8 rounded-lg bg-stone-900 text-white font-bold flex items-center justify-center mx-auto animate-pulse">
+          <div className="w-8 h-8 rounded-lg bg-stone-950 text-white font-bold flex items-center justify-center mx-auto animate-pulse">
             AX
           </div>
           <p className="text-xs text-stone-500 font-medium">Initializing Axia System...</p>
@@ -73,6 +74,17 @@ function MainApp() {
   const handleOpenReceiveStock = (prod?: Product) => {
     setReceiveStockProduct(prod || null);
     setIsReceiveStockOpen(true);
+  };
+
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setIsAddProductOpen(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(null);
+    setEditingProduct(product);
+    setIsAddProductOpen(true);
   };
 
   const handleOpenRecordPayment = (sale: Sale) => {
@@ -101,7 +113,7 @@ function MainApp() {
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           onOpenNewSale={() => setIsNewSaleOpen(true)}
           onOpenReceiveStock={() => handleOpenReceiveStock()}
-          onOpenAddProduct={() => setIsAddProductOpen(true)}
+          onOpenAddProduct={handleOpenAddProduct}
           onSelectProductDetails={(p) => setSelectedProduct(p)}
         />
 
@@ -112,7 +124,7 @@ function MainApp() {
               onNavigateToInventory={handleNavigateToInventory}
               onOpenNewSale={() => setIsNewSaleOpen(true)}
               onOpenReceiveStock={() => handleOpenReceiveStock()}
-              onOpenAddProduct={() => setIsAddProductOpen(true)}
+              onOpenAddProduct={handleOpenAddProduct}
               onSelectProductDetails={(p) => setSelectedProduct(p)}
             />
           )}
@@ -120,7 +132,8 @@ function MainApp() {
           {currentTab === 'inventory' && (
             <InventoryView
               initialCategoryFilter={inventoryCategoryFilter}
-              onOpenAddProduct={() => setIsAddProductOpen(true)}
+              onOpenAddProduct={handleOpenAddProduct}
+              onEditProduct={handleEditProduct}
               onOpenReceiveStock={handleOpenReceiveStock}
               onSelectProductDetails={(p) => setSelectedProduct(p)}
             />
@@ -165,7 +178,11 @@ function MainApp() {
 
       <AddProductModal
         isOpen={isAddProductOpen}
-        onClose={() => setIsAddProductOpen(false)}
+        product={editingProduct}
+        onClose={() => {
+          setIsAddProductOpen(false);
+          setEditingProduct(null);
+        }}
       />
 
       <ProductDetailModal
@@ -173,6 +190,7 @@ function MainApp() {
         isOpen={Boolean(selectedProduct)}
         onClose={() => setSelectedProduct(null)}
         onOpenReceiveStock={(p) => handleOpenReceiveStock(p)}
+        onEditProduct={handleEditProduct}
       />
 
       <SaleDetailModal

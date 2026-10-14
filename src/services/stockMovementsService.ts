@@ -30,7 +30,6 @@ export async function getStockMovements(options?: {
           result = result.filter(
             (m) =>
               m.product?.name.toLowerCase().includes(q) ||
-              m.product?.sku.toLowerCase().includes(q) ||
               m.reason.toLowerCase().includes(q)
           );
         }
@@ -58,7 +57,6 @@ export async function getStockMovements(options?: {
     hydrated = hydrated.filter(
       (m) =>
         m.product?.name.toLowerCase().includes(q) ||
-        m.product?.sku.toLowerCase().includes(q) ||
         m.reason.toLowerCase().includes(q)
     );
   }

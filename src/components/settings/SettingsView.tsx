@@ -72,7 +72,7 @@ export function SettingsView() {
       <div className="bg-white border border-stone-200/80 rounded-xl p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-stone-100">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-stone-900 text-white rounded-lg">
+            <div className="p-2 bg-stone-950 text-white rounded-lg">
               <Database className="w-5 h-5" />
             </div>
             <div>

@@ -304,7 +304,7 @@ export function DashboardView({
                             {p.name}
                           </p>
                           <p className="text-[11px] text-stone-500">
-                            {p.category} • SKU: {p.sku}
+                            {p.category}
                           </p>
                         </div>
                       </div>

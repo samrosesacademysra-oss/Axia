@@ -5,15 +5,17 @@ import {
   Boxes,
   Eye,
   Filter,
+  Pencil,
   Package,
   Plus,
   Search,
   TrendingUp,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { readPackDetails } from '../../lib/packDetails';
 import { getProducts } from '../../services/productsService';
 import { Product, ProductCategory, StockStatus } from '../../types/database';
-import { CategoryBadge, StockBadge } from '../common/Badge';
+import { StockBadge } from '../common/Badge';
 import { EmptyState } from '../common/EmptyState';
 
 type FilterType =
@@ -28,6 +30,7 @@ type FilterType =
 interface InventoryViewProps {
   initialCategoryFilter?: ProductCategory;
   onOpenAddProduct: () => void;
+  onEditProduct: (product: Product) => void;
   onOpenReceiveStock: (product?: Product) => void;
   onSelectProductDetails: (product: Product) => void;
 }
@@ -35,6 +38,7 @@ interface InventoryViewProps {
 export function InventoryView({
   initialCategoryFilter,
   onOpenAddProduct,
+  onEditProduct,
   onOpenReceiveStock,
   onSelectProductDetails,
 }: InventoryViewProps) {
@@ -77,9 +81,7 @@ export function InventoryView({
       // Search
       const q = search.trim().toLowerCase();
       if (q) {
-        const matchesName = p.name.toLowerCase().includes(q);
-        const matchesSku = p.sku.toLowerCase().includes(q);
-        if (!matchesName && !matchesSku) return false;
+        if (!p.name.toLowerCase().includes(q)) return false;
       }
 
       // Filter
@@ -148,7 +150,7 @@ export function InventoryView({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search inventory by product name or SKU (e.g. AX-FR-001)..."
+              placeholder="Search inventory by product name..."
               className="w-full pl-10 pr-4 py-2 text-xs bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 shadow-xs"
             />
             {search && (
@@ -224,9 +226,10 @@ export function InventoryView({
               <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3.5 px-4 sm:px-6">Product</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4 text-right">Selling Price</th>
-                  <th className="py-3.5 px-4 text-right">Stock</th>
+                  <th className="py-3.5 px-4 text-right">Unit price</th>
+                  <th className="py-3.5 px-4 text-right">Carton price</th>
+                  <th className="py-3.5 px-4 text-right">Total carton</th>
+                  <th className="py-3.5 px-4 text-right">Pieces</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -234,6 +237,8 @@ export function InventoryView({
               <tbody className="divide-y divide-stone-100">
                 {filteredProducts.map((p) => {
                   const status = getProductStockStatus(p);
+                  const pack = readPackDetails(p.description);
+                  const cartonPrice = pack.cartonPrice === '' ? null : Number(pack.cartonPrice);
                   return (
                     <tr
                       key={p.id}
@@ -258,34 +263,40 @@ export function InventoryView({
                             <div className="font-semibold text-stone-900 group-hover:text-stone-950 transition-colors">
                               {p.name}
                             </div>
-                            <div className="text-[11px] font-mono text-stone-400 mt-0.5">
-                              {p.sku}
-                            </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Category */}
-                      <td className="py-3 px-4">
-                        <CategoryBadge category={p.category} />
-                      </td>
-
-                      {/* Price */}
-                      <td className="py-3 px-4 text-right font-mono font-medium text-stone-900">
-                        GHS {p.selling_price.toFixed(2)}
-                      </td>
-
-                      {/* Stock */}
                       <td className="py-3 px-4 text-right">
                         <span className="font-mono font-bold text-stone-900">
-                          {p.stock_quantity}
+                          {`GHS ${p.selling_price.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </span>
-                        <span className="text-[10px] text-stone-400 block">
-                          min {p.low_stock_threshold}
-                        </span>
+                        <span className="text-[10px] text-stone-400 block">per piece</span>
                       </td>
 
-                      {/* Status */}
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-mono font-bold text-stone-900">
+                          {cartonPrice === null || Number.isNaN(cartonPrice)
+                            ? '—'
+                            : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        </span>
+                        <span className="text-[10px] text-stone-400 block">per carton</span>
+                      </td>
+
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-mono font-bold text-stone-900">
+                          {pack.cartonCount || '—'}
+                        </span>
+                        <span className="text-[10px] text-stone-400 block">cartons</span>
+                      </td>
+
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-mono font-medium text-stone-500">
+                          {p.stock_quantity}
+                        </span>
+                        <span className="text-[10px] text-stone-400 block">pieces</span>
+                      </td>
+
                       <td className="py-3 px-4">
                         <StockBadge status={status} />
                       </td>
@@ -293,6 +304,15 @@ export function InventoryView({
                       {/* Actions */}
                       <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onEditProduct(p)}
+                            className="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors inline-flex items-center gap-1"
+                            title="Edit this product"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => onOpenReceiveStock(p)}

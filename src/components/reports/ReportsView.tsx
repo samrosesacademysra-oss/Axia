@@ -293,9 +293,6 @@ export function ReportsView() {
                         </td>
                         <td className="py-3 px-4 font-semibold text-stone-900">
                           {item.product.name}
-                          <span className="text-[10px] text-stone-400 font-mono ml-2">
-                            {item.product.sku}
-                          </span>
                         </td>
                         <td className="py-3 px-4 text-stone-600">
                           {item.product.category}

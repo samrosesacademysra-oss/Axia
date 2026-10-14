@@ -77,7 +77,7 @@ export function Header({
         </button>
 
         <div className="flex items-center gap-2.5 md:hidden">
-          <div className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center text-white font-semibold text-sm tracking-tight shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-stone-950 flex items-center justify-center text-white font-semibold text-sm tracking-tight shadow-xs">
             AX
           </div>
           <div>
@@ -203,7 +203,7 @@ export function Header({
             }}
             className="flex items-center gap-2.5 pl-1.5 pr-2.5 py-1 rounded-lg hover:bg-stone-100 transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-stone-900 text-white flex items-center justify-center text-xs font-medium tracking-tight">
+            <div className="w-7 h-7 rounded-full bg-stone-950 text-white flex items-center justify-center text-xs font-medium tracking-tight">
               {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
             </div>
             <div className="hidden sm:block text-left">

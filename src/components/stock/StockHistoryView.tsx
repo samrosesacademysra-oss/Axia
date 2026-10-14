@@ -41,9 +41,8 @@ export function StockHistoryView() {
       const q = search.trim().toLowerCase();
       if (q) {
         const matchesProduct = m.product?.name.toLowerCase().includes(q);
-        const matchesSku = m.product?.sku.toLowerCase().includes(q);
         const matchesReason = m.reason.toLowerCase().includes(q);
-        if (!matchesProduct && !matchesSku && !matchesReason) return false;
+        if (!matchesProduct && !matchesReason) return false;
       }
       if (typeFilter !== 'All' && m.movement_type !== typeFilter) {
         return false;
@@ -72,7 +71,7 @@ export function StockHistoryView() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by product name, SKU, or movement reason..."
+            placeholder="Search by product name or movement reason..."
             className="w-full pl-10 pr-4 py-2 text-xs bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 shadow-xs"
           />
         </div>
@@ -153,7 +152,7 @@ export function StockHistoryView() {
                           {m.product?.name || 'Deleted Product'}
                         </div>
                         <div className="text-[11px] font-mono text-stone-400">
-                          {m.product?.sku} • {m.product?.category}
+                          {m.product?.category}
                         </div>
                       </td>
 

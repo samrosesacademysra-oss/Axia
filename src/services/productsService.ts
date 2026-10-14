@@ -72,13 +72,25 @@ async function applyOpeningInventory(): Promise<void> {
 }
 
 export interface CreateProductInput {
-  sku: string;
   name: string;
   category: ProductCategory;
   image_url?: string | null;
   selling_price: number;
   cost_price: number;
   initial_stock: number;
+  low_stock_threshold: number;
+  description?: string | null;
+  recorded_by?: string;
+}
+
+export interface UpdateProductInput {
+  id: string;
+  name: string;
+  category: ProductCategory;
+  image_url?: string | null;
+  selling_price: number;
+  cost_price: number;
+  stock_quantity: number;
   low_stock_threshold: number;
   description?: string | null;
   recorded_by?: string;
@@ -106,7 +118,7 @@ export async function getProducts(options?: {
         query = query.eq('category', options.category);
       }
       if (options?.search) {
-        query = query.or(`name.ilike.%${options.search}%,sku.ilike.%${options.search}%`);
+        query = query.ilike('name', `%${options.search}%`);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -122,9 +134,7 @@ export async function getProducts(options?: {
   }
   if (options?.search) {
     const q = options.search.toLowerCase();
-    products = products.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-    );
+    products = products.filter((p) => p.name.toLowerCase().includes(q));
   }
   return products;
 }
@@ -150,7 +160,7 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
 
   const newProduct: Product = {
     id,
-    sku: input.sku.trim().toUpperCase(),
+    sku: `AX-${id.replace(/-/g, '').slice(0, 12).toUpperCase()}`,
     name: input.name.trim(),
     category: input.category,
     image_url: input.image_url || null,
@@ -220,6 +230,86 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
   }
 
   return newProduct;
+}
+
+export async function updateProduct(input: UpdateProductInput): Promise<Product> {
+  const existing = await getProductById(input.id);
+  if (!existing) {
+    throw new Error('Product not found');
+  }
+
+  const now = new Date().toISOString();
+  const nextStock = Math.max(0, Number(input.stock_quantity || 0));
+  const recordedBy = input.recorded_by || 'Admin';
+  const updated: Product = {
+    ...existing,
+    name: input.name.trim(),
+    category: input.category,
+    image_url: input.image_url || null,
+    selling_price: Number(input.selling_price),
+    cost_price: Number(input.cost_price || 0),
+    stock_quantity: nextStock,
+    low_stock_threshold: Math.max(0, Number(input.low_stock_threshold || 0)),
+    description: input.description?.trim() || null,
+    updated_at: now,
+  };
+  const stockDelta = nextStock - existing.stock_quantity;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          name: updated.name,
+          category: updated.category,
+          image_url: updated.image_url,
+          selling_price: updated.selling_price,
+          cost_price: updated.cost_price,
+          stock_quantity: updated.stock_quantity,
+          low_stock_threshold: updated.low_stock_threshold,
+          description: updated.description,
+          updated_at: now,
+        })
+        .eq('id', input.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (stockDelta !== 0) {
+        await supabase.from('stock_movements').insert({
+          product_id: input.id,
+          movement_type: 'Adjustment',
+          quantity: stockDelta,
+          previous_quantity: existing.stock_quantity,
+          new_quantity: nextStock,
+          reason: 'Inventory quantity edited',
+          recorded_by: recordedBy,
+        });
+      }
+
+      return data as Product;
+    } catch (err) {
+      console.warn('Supabase update failed, saving to local DB:', err);
+    }
+  }
+
+  localDb.saveProduct(updated);
+  if (stockDelta !== 0) {
+    localDb.saveStockMovement({
+      id: crypto.randomUUID ? crypto.randomUUID() : `sm-${Date.now()}`,
+      product_id: updated.id,
+      movement_type: 'Adjustment',
+      quantity: stockDelta,
+      previous_quantity: existing.stock_quantity,
+      new_quantity: nextStock,
+      reason: 'Inventory quantity edited',
+      recorded_by: recordedBy,
+      created_at: now,
+    });
+  }
+
+  return updated;
 }
 
 export async function receiveStock(input: ReceiveStockInput): Promise<Product> {
