@@ -7,6 +7,37 @@ import { PRODUCT_CATEGORIES, Product, ProductCategory } from '../../types/databa
 import { Modal } from '../common/Modal';
 import type { InventoryPriceMode } from './InventoryView';
 
+function readProductPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('Please choose a picture file.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that picture.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 800;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+          reject(new Error('Could not prepare that picture.'));
+          return;
+        }
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => reject(new Error('Could not open that picture.'));
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,7 +53,6 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
   const [category, setCategory] = useState<ProductCategory>('Personal Care');
   const [imageUrl, setImageUrl] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
-  const [costPrice, setCostPrice] = useState('');
   const [initialStock, setInitialStock] = useState('0');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
   const [description, setDescription] = useState('');
@@ -64,7 +94,6 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
       setImageUrl(product.image_url || '');
       const pack = readPackDetails(product.description);
       setSellingPrice(String(product.selling_price));
-      setCostPrice(String(product.cost_price));
       setInitialStock(String(product.stock_quantity));
       setLowStockThreshold(String(product.low_stock_threshold));
       setCartonUnit(pack.unitsPerCarton);
@@ -78,8 +107,7 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
     setCategory('Personal Care');
     setImageUrl('');
     setSellingPrice('');
-    setCostPrice('');
-    setInitialStock('0');
+    setInitialStock('');
     setLowStockThreshold('5');
     setDescription('');
     setCartonUnit('');
@@ -101,30 +129,37 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
       setError('Please provide a valid unit price.');
       return;
     }
-    if (isWholesaleEdit && cartonUnit && (Number.isNaN(Number(cartonUnit)) || Number(cartonUnit) <= 0)) {
+    if (!isEditing && (initialStock === '' || Number.isNaN(Number(initialStock)) || Number(initialStock) < 0)) {
+      setError('Total pieces cannot be negative.');
+      return;
+    }
+    if ((!isEditing || isWholesaleEdit) && cartonUnit && (Number.isNaN(Number(cartonUnit)) || Number(cartonUnit) <= 0)) {
       setError('Pieces per carton must be greater than zero.');
       return;
     }
-    if (isWholesaleEdit && (cartonPrice === '' || Number.isNaN(Number(cartonPrice)) || Number(cartonPrice) < 0)) {
+    if ((!isEditing || isWholesaleEdit) && (cartonPrice === '' || Number.isNaN(Number(cartonPrice)) || Number(cartonPrice) < 0)) {
       setError('Please provide a valid carton price.');
       return;
     }
-    if (isWholesaleEdit && (cartonCount === '' || Number.isNaN(Number(cartonCount)) || Number(cartonCount) < 0)) {
+    if ((!isEditing || isWholesaleEdit) && (cartonCount === '' || Number.isNaN(Number(cartonCount)) || Number(cartonCount) < 0)) {
       setError('Total cartons cannot be negative.');
       return;
     }
 
     try {
       setSubmitting(true);
-      const savedDescription = isEditing
-        ? writePackDetails(description, { cartonCount, unitsPerCarton: cartonUnit, loosePieces, cartonPrice })
-        : description;
+      const savedDescription = writePackDetails(description, {
+        cartonCount,
+        unitsPerCarton: cartonUnit,
+        loosePieces,
+        cartonPrice,
+      });
       const shared = {
         name,
         category,
         image_url: imageUrl.trim() || null,
         selling_price: sell,
-        cost_price: isEditing && product ? product.cost_price : parseFloat(costPrice) || 0,
+        cost_price: isEditing && product ? product.cost_price : 0,
         low_stock_threshold: parseInt(lowStockThreshold, 10) || 5,
         description: savedDescription,
         recorded_by: user?.name || 'Admin',
@@ -168,7 +203,7 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
           ? isWholesaleEdit
             ? 'Update the carton price, pieces per carton, and total cartons.'
             : 'Update the unit price and total pieces.'
-          : 'Add a new catalog product to Axia Distributions inventory.'
+          : 'Enter the wholesale carton details and the retail piece details.'
       }
       maxWidth="xl"
     >
@@ -213,10 +248,10 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
             </select>
           </div>
 
-          {!isWholesaleEdit && (
+          {isEditing && !isWholesaleEdit && (
             <div>
               <label className="block text-xs font-semibold text-stone-700 mb-1">
-                {isEditing ? 'Unit Price (GHS) *' : 'Selling Price (GHS) *'}
+                Unit Price (GHS) *
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
@@ -237,40 +272,110 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
           )}
 
           {!isEditing && (
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                Cost Price (GHS)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
-                  GHS
-                </span>
+            <>
+              <div className="sm:col-span-2 pt-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Wholesale</span>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Carton price (GHS) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
+                    GHS
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    placeholder="540.00"
+                    value={cartonPrice}
+                    onChange={(e) => setCartonPrice(e.target.value)}
+                    className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Pieces per carton
+                </label>
                 <input
                   type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="75.00"
-                  value={costPrice}
-                  onChange={(e) => setCostPrice(e.target.value)}
-                  className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                  min="1"
+                  required
+                  placeholder="36"
+                  value={cartonUnit}
+                  onChange={(e) => setCartonUnit(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
                 />
               </div>
-            </div>
-          )}
-
-          {!isEditing && (
-            <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                Initial Stock Units
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={initialStock}
-                onChange={(e) => setInitialStock(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Total carton *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  placeholder="6"
+                  value={cartonCount}
+                  onChange={(e) => setCartonCount(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                <span className="block text-xs font-semibold text-stone-700">Wholesale total</span>
+                <span className="mt-1 block font-mono text-lg font-bold text-stone-900">
+                  {wholesaleAmount === null ? '—' : `GHS ${wholesaleAmount.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-stone-400">Carton price × Total carton</span>
+              </div>
+              <div className="sm:col-span-2 pt-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Retail shop</span>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Unit price (GHS) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
+                    GHS
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    placeholder="15.00"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(e.target.value)}
+                    className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Total pieces *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  placeholder="216"
+                  value={initialStock}
+                  onChange={(e) => setInitialStock(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
+              <div className="sm:col-span-2 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                <span className="block text-xs font-semibold text-stone-700">Retail total</span>
+                <span className="mt-1 block font-mono text-lg font-bold text-stone-900">
+                  {retailAmount === null ? '—' : `GHS ${retailAmount.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-stone-400">Unit price × Total pieces</span>
+              </div>
+            </>
           )}
 
           {isWholesaleEdit && (
@@ -369,18 +474,48 @@ export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesa
             </span>
           </div>
 
-          {/* Image URL */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Image URL (optional)
+              Product photo (optional)
             </label>
-            <input
-              type="url"
-              placeholder="https://example.com/product-image.jpg"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-            />
+            <div className="flex items-center gap-3">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+                {imageUrl ? (
+                  <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] text-stone-400">
+                    No photo
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    try {
+                      setImageUrl(await readProductPhoto(file));
+                      setError(null);
+                    } catch (err: unknown) {
+                      setError((err as Error).message || 'Could not use that picture.');
+                    }
+                  }}
+                  className="block w-full text-xs text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
+                />
+                {imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="mt-2 text-xs font-medium text-stone-500 hover:text-stone-900"
+                  >
+                    Remove photo
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Description */}

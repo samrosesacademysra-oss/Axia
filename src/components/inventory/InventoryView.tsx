@@ -250,6 +250,7 @@ export function InventoryView({
             <table className="w-full text-left text-xs">
               <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
+                  <th className="py-3.5 px-4 w-12">#</th>
                   <th className="py-3.5 px-4 sm:px-6">Product</th>
                   {priceMode === 'wholesale' ? (
                     <>
@@ -267,7 +268,7 @@ export function InventoryView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredProducts.map((p) => {
+                {filteredProducts.map((p, index) => {
                   const status = getProductStockStatus(p);
                   const pack = readPackDetails(p.description);
                   const cartonPrice = pack.cartonPrice === '' ? null : Number(pack.cartonPrice);
@@ -277,6 +278,7 @@ export function InventoryView({
                       className="hover:bg-stone-50/70 transition-colors group cursor-pointer"
                       onClick={() => onSelectProductDetails(p)}
                     >
+                      <td className="py-3 px-4 font-mono text-stone-400">{index + 1}</td>
                       {/* Product */}
                       <td className="py-3 px-4 sm:px-6">
                         <div className="flex items-center gap-3">

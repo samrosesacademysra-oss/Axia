@@ -151,6 +151,7 @@ export function CustomersView({ onSelectCustomerDetails }: CustomersViewProps) {
             <table className="w-full text-left text-xs">
               <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
+                  <th className="py-3.5 px-4 w-12">#</th>
                   <th className="py-3.5 px-4 sm:px-6">Customer</th>
                   <th className="py-3.5 px-4">Phone</th>
                   <th className="py-3.5 px-4">Email</th>
@@ -160,12 +161,13 @@ export function CustomersView({ onSelectCustomerDetails }: CustomersViewProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredCustomers.map((c) => (
+                {filteredCustomers.map((c, index) => (
                   <tr
                     key={c.id}
                     className="hover:bg-stone-50/70 transition-colors group cursor-pointer"
                     onClick={() => onSelectCustomerDetails(c.id)}
                   >
+                    <td className="py-3.5 px-4 font-mono text-stone-400">{index + 1}</td>
                     <td className="py-3.5 px-4 sm:px-6">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 border border-stone-200 flex items-center justify-center font-bold text-[11px] shrink-0">
