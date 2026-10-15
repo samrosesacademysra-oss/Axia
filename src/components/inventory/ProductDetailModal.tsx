@@ -14,11 +14,13 @@ import {
 import { readPackDetails } from '../../lib/packDetails';
 import { getStockMovements } from '../../services/stockMovementsService';
 import { Product, StockMovement, StockStatus } from '../../types/database';
+import type { InventoryPriceMode } from './InventoryView';
 import { CategoryBadge, StockBadge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 
 interface ProductDetailModalProps {
   product: Product | null;
+  priceMode: InventoryPriceMode;
   isOpen: boolean;
   onClose: () => void;
   onOpenReceiveStock: (product: Product) => void;
@@ -27,6 +29,7 @@ interface ProductDetailModalProps {
 
 export function ProductDetailModal({
   product,
+  priceMode,
   isOpen,
   onClose,
   onOpenReceiveStock,
@@ -117,39 +120,51 @@ export function ProductDetailModal({
 
         {/* Metric Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 bg-white border border-stone-200 rounded-lg">
-            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Carton price
-            </span>
-            <span className="text-xl font-bold font-mono text-stone-900">
-              {cartonPrice === null || Number.isNaN(cartonPrice)
-                ? '—'
-                : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </span>
-            <span className="text-[10px] text-stone-500 block">per carton</span>
-          </div>
-
-          <div className="p-3 bg-white border border-stone-200 rounded-lg">
-            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Total carton
-            </span>
-            <span className="text-xl font-bold font-mono text-stone-900">
-              {pack.cartonCount || '—'}
-            </span>
-            <span className="text-[10px] text-stone-500 block">cartons on hand</span>
-          </div>
-
-          <div className="p-3 bg-white border border-stone-200 rounded-lg">
-            <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
-              Total pieces
-            </span>
-            <span className="text-xl font-bold font-mono text-stone-900">
-              {product.stock_quantity}
-            </span>
-            <span className="text-[10px] text-stone-500 block">
-              GHS {product.selling_price.toFixed(2)} per piece
-            </span>
-          </div>
+          {priceMode === 'wholesale' ? (
+            <>
+              <div className="p-3 bg-white border border-stone-200 rounded-lg">
+                <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+                  Carton price
+                </span>
+                <span className="text-xl font-bold font-mono text-stone-900">
+                  {cartonPrice === null || Number.isNaN(cartonPrice)
+                    ? '—'
+                    : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+                <span className="text-[10px] text-stone-500 block">per carton</span>
+              </div>
+              <div className="p-3 bg-white border border-stone-200 rounded-lg">
+                <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+                  Total carton
+                </span>
+                <span className="text-xl font-bold font-mono text-stone-900">
+                  {pack.cartonCount || '—'}
+                </span>
+                <span className="text-[10px] text-stone-500 block">cartons on hand</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="p-3 bg-white border border-stone-200 rounded-lg">
+                <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+                  Unit price
+                </span>
+                <span className="text-xl font-bold font-mono text-stone-900">
+                  {`GHS ${product.selling_price.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+                <span className="text-[10px] text-stone-500 block">per piece</span>
+              </div>
+              <div className="p-3 bg-white border border-stone-200 rounded-lg">
+                <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">
+                  Pieces
+                </span>
+                <span className="text-xl font-bold font-mono text-stone-900">
+                  {product.stock_quantity}
+                </span>
+                <span className="text-[10px] text-stone-500 block">pieces on hand</span>
+              </div>
+            </>
+          )}
 
           <div className="p-3 bg-white border border-stone-200 rounded-lg">
             <span className="text-[10px] uppercase font-semibold text-stone-400 block mb-0.5">

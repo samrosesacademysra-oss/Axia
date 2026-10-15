@@ -27,8 +27,12 @@ type FilterType =
   | 'Low Stock'
   | 'Out of Stock';
 
+export type InventoryPriceMode = 'wholesale' | 'retail';
+
 interface InventoryViewProps {
   initialCategoryFilter?: ProductCategory;
+  priceMode: InventoryPriceMode;
+  onPriceModeChange: (mode: InventoryPriceMode) => void;
   onOpenAddProduct: () => void;
   onEditProduct: (product: Product) => void;
   onOpenReceiveStock: (product?: Product) => void;
@@ -37,6 +41,8 @@ interface InventoryViewProps {
 
 export function InventoryView({
   initialCategoryFilter,
+  priceMode,
+  onPriceModeChange,
   onOpenAddProduct,
   onEditProduct,
   onOpenReceiveStock,
@@ -121,6 +127,25 @@ export function InventoryView({
         </div>
 
         <div className="flex items-center gap-2.5">
+          <div className="inline-flex rounded-lg border border-stone-200 bg-white p-0.5 shadow-xs">
+            {([
+              ['wholesale', 'Wholesale'],
+              ['retail', 'Retail shop'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => onPriceModeChange(mode)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  priceMode === mode
+                    ? 'bg-stone-900 text-white'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => onOpenReceiveStock()}
@@ -226,10 +251,17 @@ export function InventoryView({
               <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3.5 px-4 sm:px-6">Product</th>
-                  <th className="py-3.5 px-4 text-right">Unit price</th>
-                  <th className="py-3.5 px-4 text-right">Carton price</th>
-                  <th className="py-3.5 px-4 text-right">Total carton</th>
-                  <th className="py-3.5 px-4 text-right">Pieces</th>
+                  {priceMode === 'wholesale' ? (
+                    <>
+                      <th className="py-3.5 px-4 text-right">Carton price</th>
+                      <th className="py-3.5 px-4 text-right">Total carton</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3.5 px-4 text-right">Unit price</th>
+                      <th className="py-3.5 px-4 text-right">Pieces</th>
+                    </>
+                  )}
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -267,35 +299,39 @@ export function InventoryView({
                         </div>
                       </td>
 
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-mono font-bold text-stone-900">
-                          {`GHS ${p.selling_price.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        </span>
-                        <span className="text-[10px] text-stone-400 block">per piece</span>
-                      </td>
-
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-mono font-bold text-stone-900">
-                          {cartonPrice === null || Number.isNaN(cartonPrice)
-                            ? '—'
-                            : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        </span>
-                        <span className="text-[10px] text-stone-400 block">per carton</span>
-                      </td>
-
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-mono font-bold text-stone-900">
-                          {pack.cartonCount || '—'}
-                        </span>
-                        <span className="text-[10px] text-stone-400 block">cartons</span>
-                      </td>
-
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-mono font-medium text-stone-500">
-                          {p.stock_quantity}
-                        </span>
-                        <span className="text-[10px] text-stone-400 block">pieces</span>
-                      </td>
+                      {priceMode === 'wholesale' ? (
+                        <>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-mono font-bold text-stone-900">
+                              {cartonPrice === null || Number.isNaN(cartonPrice)
+                                ? '—'
+                                : `GHS ${cartonPrice.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </span>
+                            <span className="text-[10px] text-stone-400 block">per carton</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-mono font-bold text-stone-900">
+                              {pack.cartonCount || '—'}
+                            </span>
+                            <span className="text-[10px] text-stone-400 block">cartons</span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-mono font-bold text-stone-900">
+                              {`GHS ${p.selling_price.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </span>
+                            <span className="text-[10px] text-stone-400 block">per piece</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-mono font-bold text-stone-900">
+                              {p.stock_quantity}
+                            </span>
+                            <span className="text-[10px] text-stone-400 block">pieces</span>
+                          </td>
+                        </>
+                      )}
 
                       <td className="py-3 px-4">
                         <StockBadge status={status} />

@@ -11,7 +11,7 @@ import { CustomerDetailModal } from './components/customers/CustomerDetailModal'
 import { CustomersView } from './components/customers/CustomersView';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { AddProductModal } from './components/inventory/AddProductModal';
-import { InventoryView } from './components/inventory/InventoryView';
+import { InventoryPriceMode, InventoryView } from './components/inventory/InventoryView';
 import { ProductDetailModal } from './components/inventory/ProductDetailModal';
 import { ReceiveStockModal } from './components/inventory/ReceiveStockModal';
 import { ReportsView } from './components/reports/ReportsView';
@@ -32,6 +32,7 @@ function MainApp() {
 
   // Inventory filter state passed when clicking dashboard category
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState<ProductCategory | undefined>(undefined);
+  const [inventoryPriceMode, setInventoryPriceMode] = useState<InventoryPriceMode>('wholesale');
 
   // Modal states
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
@@ -132,6 +133,8 @@ function MainApp() {
           {currentTab === 'inventory' && (
             <InventoryView
               initialCategoryFilter={inventoryCategoryFilter}
+              priceMode={inventoryPriceMode}
+              onPriceModeChange={setInventoryPriceMode}
               onOpenAddProduct={handleOpenAddProduct}
               onEditProduct={handleEditProduct}
               onOpenReceiveStock={handleOpenReceiveStock}
@@ -187,6 +190,7 @@ function MainApp() {
 
       <ProductDetailModal
         product={selectedProduct}
+        priceMode={inventoryPriceMode}
         isOpen={Boolean(selectedProduct)}
         onClose={() => setSelectedProduct(null)}
         onOpenReceiveStock={(p) => handleOpenReceiveStock(p)}
