@@ -5,14 +5,16 @@ import { createProduct, updateProduct } from '../../services/productsService';
 import { readPackDetails, stripPackDetails, writePackDetails } from '../../lib/packDetails';
 import { PRODUCT_CATEGORIES, Product, ProductCategory } from '../../types/database';
 import { Modal } from '../common/Modal';
+import type { InventoryPriceMode } from './InventoryView';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product?: Product | null;
+  priceMode?: InventoryPriceMode;
 }
 
-export function AddProductModal({ isOpen, onClose, product }: AddProductModalProps) {
+export function AddProductModal({ isOpen, onClose, product, priceMode = 'wholesale' }: AddProductModalProps) {
   const { user } = useAuth();
   const { refreshData } = useData();
 
@@ -32,15 +34,26 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEditing = Boolean(product);
+  const isWholesaleEdit = isEditing && priceMode === 'wholesale';
   const unitPriceValue = Number(sellingPrice);
   const totalPiecesValue = Number(initialStock);
-  const totalAmount =
+  const cartonPriceValue = Number(cartonPrice);
+  const cartonCountValue = Number(cartonCount);
+  const wholesaleAmount =
+    cartonPrice !== '' &&
+    cartonCount !== '' &&
+    !Number.isNaN(cartonPriceValue) &&
+    !Number.isNaN(cartonCountValue)
+      ? cartonPriceValue * cartonCountValue
+      : null;
+  const retailAmount =
     sellingPrice !== '' &&
     initialStock !== '' &&
     !Number.isNaN(unitPriceValue) &&
     !Number.isNaN(totalPiecesValue)
       ? unitPriceValue * totalPiecesValue
       : null;
+  const totalAmount = isWholesaleEdit ? wholesaleAmount : retailAmount;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,20 +96,20 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
       setError('Product name is required.');
       return;
     }
-    const sell = parseFloat(sellingPrice);
-    if (isNaN(sell) || sell < 0) {
+    const sell = isWholesaleEdit && product ? product.selling_price : parseFloat(sellingPrice);
+    if (!isWholesaleEdit && (Number.isNaN(sell) || sell < 0)) {
       setError('Please provide a valid unit price.');
       return;
     }
-    if (isEditing && cartonUnit && (Number.isNaN(Number(cartonUnit)) || Number(cartonUnit) <= 0)) {
-      setError('Carton unit must be greater than zero.');
+    if (isWholesaleEdit && cartonUnit && (Number.isNaN(Number(cartonUnit)) || Number(cartonUnit) <= 0)) {
+      setError('Pieces per carton must be greater than zero.');
       return;
     }
-    if (isEditing && cartonPrice && (Number.isNaN(Number(cartonPrice)) || Number(cartonPrice) < 0)) {
+    if (isWholesaleEdit && (cartonPrice === '' || Number.isNaN(Number(cartonPrice)) || Number(cartonPrice) < 0)) {
       setError('Please provide a valid carton price.');
       return;
     }
-    if (isEditing && cartonCount && (Number.isNaN(Number(cartonCount)) || Number(cartonCount) < 0)) {
+    if (isWholesaleEdit && (cartonCount === '' || Number.isNaN(Number(cartonCount)) || Number(cartonCount) < 0)) {
       setError('Total cartons cannot be negative.');
       return;
     }
@@ -117,10 +130,17 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
         recorded_by: user?.name || 'Admin',
       };
       if (product) {
+        const piecesPerCarton = Number(cartonUnit);
+        const cartons = Number(cartonCount);
+        const loose = Number(loosePieces) || 0;
+        const wholesaleStock =
+          piecesPerCarton > 0 && cartonCount !== '' && !Number.isNaN(cartons)
+            ? Math.max(0, Math.round(cartons * piecesPerCarton + loose))
+            : product.stock_quantity;
         await updateProduct({
           ...shared,
           id: product.id,
-          stock_quantity: parseInt(initialStock, 10) || 0,
+          stock_quantity: isWholesaleEdit ? wholesaleStock : parseInt(initialStock, 10) || 0,
         });
       } else {
         await createProduct({
@@ -145,7 +165,9 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
       title={isEditing ? 'Edit Product' : 'Add New Product'}
       description={
         isEditing
-          ? 'Update the unit price, total pieces, carton price, and total cartons.'
+          ? isWholesaleEdit
+            ? 'Update the carton price, pieces per carton, and total cartons.'
+            : 'Update the unit price and total pieces.'
           : 'Add a new catalog product to Axia Distributions inventory.'
       }
       maxWidth="xl"
@@ -191,27 +213,28 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
             </select>
           </div>
 
-          {/* Selling Price */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              {isEditing ? 'Unit Price (GHS) *' : 'Selling Price (GHS) *'}
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
-                GHS
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="120.00"
-                value={sellingPrice}
-                onChange={(e) => setSellingPrice(e.target.value)}
-                className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-              />
+          {!isWholesaleEdit && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                {isEditing ? 'Unit Price (GHS) *' : 'Selling Price (GHS) *'}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium">
+                  GHS
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  placeholder="120.00"
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  className="w-full pl-11 pr-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {!isEditing && (
             <div>
@@ -235,21 +258,22 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
             </div>
           )}
 
-          {/* Initial Stock */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
-              {isEditing ? 'Total Pieces' : 'Initial Stock Units'}
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={initialStock}
-              onChange={(e) => setInitialStock(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
-            />
-          </div>
+          {!isEditing && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Initial Stock Units
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={initialStock}
+                onChange={(e) => setInitialStock(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+              />
+            </div>
+          )}
 
-          {isEditing && (
+          {isWholesaleEdit && (
             <>
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
@@ -263,6 +287,7 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
                     type="number"
                     step="0.01"
                     min="0"
+                    required
                     placeholder="540.00"
                     value={cartonPrice}
                     onChange={(e) => setCartonPrice(e.target.value)}
@@ -272,30 +297,59 @@ export function AddProductModal({ isOpen, onClose, product }: AddProductModalPro
               </div>
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Pieces per carton
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="36"
+                  value={cartonUnit}
+                  onChange={(e) => setCartonUnit(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
                   Total carton
                 </label>
                 <input
                   type="number"
                   min="0"
+                  required
                   placeholder="6"
                   value={cartonCount}
                   onChange={(e) => setCartonCount(e.target.value)}
                   className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
                 />
               </div>
-              <div className="sm:col-span-2 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
-                <span className="block text-xs font-semibold text-stone-700">Total amount</span>
-                <span className="mt-1 block font-mono text-lg font-bold text-stone-900">
-                  {totalAmount === null ? '—' : `GHS ${totalAmount.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                </span>
-                <span className="mt-0.5 block text-[10px] text-stone-400">
-                  Unit Price × Total Pieces
-                </span>
-                <span className="mt-2 block text-xs font-semibold text-stone-700">
-                  Total carton: <span className="font-mono">{cartonCount || '—'}</span>
-                </span>
-              </div>
             </>
+          )}
+
+          {isEditing && !isWholesaleEdit && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Total Pieces
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={initialStock}
+                onChange={(e) => setInitialStock(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:border-stone-900"
+              />
+            </div>
+          )}
+
+          {isEditing && (
+            <div className="sm:col-span-2 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+              <span className="block text-xs font-semibold text-stone-700">Total amount</span>
+              <span className="mt-1 block font-mono text-lg font-bold text-stone-900">
+                {totalAmount === null ? '—' : `GHS ${totalAmount.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </span>
+              <span className="mt-0.5 block text-[10px] text-stone-400">
+                {isWholesaleEdit ? 'Carton price × Total carton' : 'Unit price × Total pieces'}
+              </span>
+            </div>
           )}
 
           {/* Low Stock Threshold */}

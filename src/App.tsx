@@ -182,6 +182,7 @@ function MainApp() {
       <AddProductModal
         isOpen={isAddProductOpen}
         product={editingProduct}
+        priceMode={inventoryPriceMode}
         onClose={() => {
           setIsAddProductOpen(false);
           setEditingProduct(null);
